@@ -12,11 +12,11 @@ mkdir -p "$CONFIG_DIR"
 # Show current configuration
 show_projects() {
     if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
-        echo "😶 No projects configured yet. Nothing to show!"
+        echo "😶 No Google Cloud projects configured yet. Nothing to dump!"
         return
     fi
     
-    echo "🗂️  Your configured projects:"
+    echo "🗂️  Your configured Google Cloud projects:"
     echo ""
     local count=1
     while IFS=: read -r project_name api_key; do
@@ -30,7 +30,7 @@ show_projects() {
 
 # Edit configuration
 if [ "$1" == "--edit" ]; then
-    echo "🔧 Time to fix those fat-finger moments..."
+    echo "🔧 Time to fix those fat-finger errors..."
     show_projects
     
     # Backup the config file
@@ -137,6 +137,8 @@ echo "🧹 Finding all those files Gemini API didn't tell you about..."
 cleanup_project() {
     local project_name=$1
     local api_key=$2
+    local files_deleted=0
+    local tmp_file=$(mktemp)
     
     echo ""
     echo "📁 Checking what the Gemini API's been storing in $project_name..."
@@ -146,23 +148,24 @@ cleanup_project() {
     # Check for API errors
     if echo "$response" | grep -q "error"; then
         echo "❌ Hmm. Either that API key is wrong or Gemini is having a moment. Check $project_name and try again."
+        rm -f "$tmp_file"
         return 1
     fi
-    
-    # Extract and delete files
-    local files_deleted=0
     
     # Function to process and delete files
     process_files() {
         local resp=$1
-        echo "$resp" | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 | while read -r file; do
+        # Extract file names to temp file
+        echo "$resp" | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 > "$tmp_file"
+        
+        # Process each file
+        while read -r file; do
             if [ ! -z "$file" ]; then
-                echo "☁️💩 Dumping $file... ($(($files_deleted + 1)) files dumped)"
-                if curl -s -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key" > /dev/null; then
-                    files_deleted=$((files_deleted + 1))
-                fi
+                ((files_deleted++))
+                echo "☁️💩 Dumping $file... ($files_deleted files dumped)"
+                curl -s -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key" > /dev/null
             fi
-        done
+        done < "$tmp_file"
     }
     
     # Process initial batch
@@ -177,7 +180,8 @@ cleanup_project() {
         next_page_token=$(echo "$response" | grep -o '"nextPageToken": *"[^"]*"' | cut -d'"' -f4)
     done
     
-    echo "✨💨 Successfully deleted $files_deleted files you never knew you had in $project_name"
+    rm -f "$tmp_file"
+    echo "✨💨 Successfully dumped $files_deleted files you never knew you had in $project_name"
 }
 
 # Process all configured projects

@@ -36,7 +36,7 @@ sudo chown $(whoami):admin "$DESTINATION"
 sudo chmod 755 "$DESTINATION"
 
 echo "
-✅ gdump installed successfully! Time to fix your Gemini API file storage limit problems.
+✅ gdump installed successfully! Time to fix your Gemini API file storage problems.
 
 🚀 What's next:
 
