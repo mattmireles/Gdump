@@ -151,28 +151,29 @@ cleanup_project() {
     
     # Extract and delete files
     local files_deleted=0
-    echo "$response" | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 | while read -r file; do
-        if [ ! -z "$file" ]; then
-            ((files_deleted++))
-            echo "☁️💩 Dumping $file... ($files_deleted dumped)"
-            curl -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key"
-        fi
-    done
+    
+    # Function to process and delete files
+    process_files() {
+        local resp=$1
+        echo "$resp" | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 | while read -r file; do
+            if [ ! -z "$file" ]; then
+                echo "☁️💩 Dumping $file... ($(($files_deleted + 1)) files dumped)"
+                if curl -s -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key" > /dev/null; then
+                    files_deleted=$((files_deleted + 1))
+                fi
+            fi
+        done
+    }
+    
+    # Process initial batch
+    process_files "$response"
     
     # Handle pagination
     local next_page_token=$(echo "$response" | grep -o '"nextPageToken": *"[^"]*"' | cut -d'"' -f4)
     
     while [ ! -z "$next_page_token" ]; do
         response=$(curl -s "https://generativelanguage.googleapis.com/v1beta/files?key=$api_key&pageToken=$next_page_token")
-        
-        echo "$response" | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 | while read -r file; do
-            if [ ! -z "$file" ]; then
-                ((files_deleted++))
-                echo "☁️💩 Dumping $file... ($files_deleted dumped)"
-                curl -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key"
-            fi
-        done
-        
+        process_files "$response"
         next_page_token=$(echo "$response" | grep -o '"nextPageToken": *"[^"]*"' | cut -d'"' -f4)
     done
     
