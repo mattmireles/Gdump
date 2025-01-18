@@ -9,7 +9,29 @@ CONFIG_FILE="$CONFIG_DIR/projects.conf"
 # Ensure config directory exists
 mkdir -p "$CONFIG_DIR"
 
-# Show current configuration
+# Function definitions here...
+show_help() {
+    echo "
+🚽 Gdump: Because someone has to clean up after Gemini API
+
+Usage: gdump [command]
+
+Commands:
+    (no command)  Run a dump now
+    --edit        Add, remove, or edit your GCP projects
+    --schedule    Set up automatic dumps (hourly/daily/weekly)
+    --show-schedule  Check when dumps are scheduled
+    --remove-schedule  Stop automatic dumps
+    --help        Show this help message
+
+Example:
+    gdump         # Dump those files now
+    gdump --edit  # Fix that project name you typoed
+
+Need more help? Visit: https://github.com/mattmireles/gdump#readme
+"
+}
+
 show_projects() {
     if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
         echo "😶 No projects configured yet. Nothing to show!"
@@ -28,7 +50,148 @@ show_projects() {
     done < "$CONFIG_FILE"
 }
 
-# Edit configuration
+setup_cron() {
+    echo "🕒 Let's schedule regular dumps to keep Gemini API from getting constipated"
+    echo ""
+    echo "How often should gdump run?"
+    echo "  1. Hourly (for the paranoid)"
+    echo "  2. Daily"
+    echo "  3. Weekly"
+    echo "  4. Monthly"
+    echo "  5. Custom schedule"
+    echo "  6. Nevermind, I'll run it manually"
+    echo ""
+    read -p "Enter your choice (1-6): " choice
+
+    case $choice in
+        1)  # Hourly
+            schedule="0 * * * *"  # Every hour on the hour
+            description="every hour"
+            ;;
+        2)  # Daily
+            schedule="0 0 * * *"  # Midnight every day
+            description="daily at midnight"
+            ;;
+        3)  # Weekly
+            schedule="0 0 * * 0"  # Midnight every Sunday
+            description="weekly on Sunday at midnight"
+            ;;
+        4)  # Monthly
+            schedule="0 0 1 * *"  # Midnight on the 1st of each month
+            description="monthly on the 1st at midnight"
+            ;;
+        5)  # Custom
+            echo "Enter your cron schedule (e.g., '0 0 * * *' for daily at midnight):"
+            read -p "Schedule: " schedule
+            description="on your custom schedule"
+            ;;
+        6)  # Exit
+            echo "👋 No problem! Just run gdump manually when needed"
+            return
+            ;;
+        *)  
+            echo "🤨 That wasn't one of the options. Try again with --schedule"
+            return
+            ;;
+    esac
+
+    # Create or update cron job
+    (crontab -l 2>/dev/null | grep -v "gdump") | crontab -
+    (crontab -l 2>/dev/null; echo "$schedule /usr/local/bin/gdump > $HOME/.gdump/gdump.log 2>&1") | crontab -
+
+    echo ""
+    echo "✅ Gdump will now run $description"
+    echo "💡 Logs will be saved to: $HOME/.gdump/gdump.log"
+}
+
+remove_cron() {
+    if crontab -l 2>/dev/null | grep -q "gdump"; then
+        (crontab -l 2>/dev/null | grep -v "gdump") | crontab -
+        echo "✅ Automatic dumps removed. You'll need to run gdump manually now."
+    else
+        echo "😶 No scheduled dumps found."
+    fi
+}
+
+show_cron() {
+    if crontab -l 2>/dev/null | grep -q "gdump"; then
+        echo "🕒 Current gdump schedule:"
+        crontab -l | grep "gdump"
+        echo ""
+        echo "💡 To change this, run: gdump --schedule"
+        echo "   To remove it, run: gdump --remove-schedule"
+    else
+        echo "😶 No scheduled dumps found."
+        echo "💡 To set one up, run: gdump --schedule"
+    fi
+}
+
+cleanup_project() {
+    local project_name=$1
+    local api_key=$2
+    local files_deleted=0
+    local tmp_file=$(mktemp)
+    
+    echo ""
+    echo "📁 Checking what the Gemini API's been storing in $project_name..."
+    
+    local response=$(curl -s "https://generativelanguage.googleapis.com/v1beta/files?key=$api_key")
+    
+    # Check for API errors
+    if echo "$response" | grep -q "error"; then
+        echo "❌ Hmm. Either that API key is wrong or Gemini is having a moment. Check $project_name and try again."
+        rm -f "$tmp_file"
+        return 1
+    fi
+    
+    # Function to process and delete files
+    process_files() {
+        local resp=$1
+        # Extract file names to temp file
+        echo "$resp" | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 > "$tmp_file"
+        
+        # Process each file
+        while read -r file; do
+            if [ ! -z "$file" ]; then
+                ((files_deleted++))
+                echo "☁️💩 Dumping $file... ($files_deleted files dumped)"
+                curl -s -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key" > /dev/null
+            fi
+        done < "$tmp_file"
+    }
+    
+    # Process initial batch
+    process_files "$response"
+    
+    # Handle pagination
+    local next_page_token=$(echo "$response" | grep -o '"nextPageToken": *"[^"]*"' | cut -d'"' -f4)
+    
+    while [ ! -z "$next_page_token" ]; do
+        response=$(curl -s "https://generativelanguage.googleapis.com/v1beta/files?key=$api_key&pageToken=$next_page_token")
+        process_files "$response"
+        next_page_token=$(echo "$response" | grep -o '"nextPageToken": *"[^"]*"' | cut -d'"' -f4)
+    done
+    
+    rm -f "$tmp_file"
+    echo "✨💨 Successfully deleted $files_deleted files you never knew you had in $project_name"
+}
+
+get_version() {
+    # Try to get version from git tag
+    if command -v git >/dev/null 2>&1 && [ -d "$(dirname "$0")/.git" ]; then
+        git describe --tags 2>/dev/null || echo "dev"
+    else
+        # Fallback if not in git repo or git not available
+        echo "unknown"
+    fi
+}
+
+# Handle all command arguments first
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+    show_help
+    exit 0
+fi
+
 if [ "$1" == "--edit" ]; then
     echo "🔧 Time to fix those fat-finger moments..."
     show_projects
@@ -124,6 +287,27 @@ if [ "$1" == "--edit" ]; then
     exit 0
 fi
 
+if [ "$1" == "--schedule" ]; then
+    setup_cron
+    exit 0
+fi
+
+if [ "$1" == "--remove-schedule" ]; then
+    remove_cron
+    exit 0
+fi
+
+if [ "$1" == "--show-schedule" ]; then
+    show_cron
+    exit 0
+fi
+
+if [ "$1" == "--version" ]; then
+    echo "gdump $(get_version)"
+    exit 0
+fi
+
+# Now handle the main dump functionality (no arguments)
 # Check if config file exists and has entries
 if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
     echo "😶 No projects configured yet. Run: gdump --edit"
@@ -132,57 +316,6 @@ if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
 fi
 
 echo "🧹 Finding all those files Gemini API didn't tell you about..."
-
-# Get the list of files and delete them for a single project
-cleanup_project() {
-    local project_name=$1
-    local api_key=$2
-    local files_deleted=0
-    local tmp_file=$(mktemp)
-    
-    echo ""
-    echo "📁 Checking what the Gemini API's been storing in $project_name..."
-    
-    local response=$(curl -s "https://generativelanguage.googleapis.com/v1beta/files?key=$api_key")
-    
-    # Check for API errors
-    if echo "$response" | grep -q "error"; then
-        echo "❌ Hmm. Either that API key is wrong or Gemini is having a moment. Check $project_name and try again."
-        rm -f "$tmp_file"
-        return 1
-    fi
-    
-    # Function to process and delete files
-    process_files() {
-        local resp=$1
-        # Extract file names to temp file
-        echo "$resp" | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 > "$tmp_file"
-        
-        # Process each file
-        while read -r file; do
-            if [ ! -z "$file" ]; then
-                ((files_deleted++))
-                echo "☁️💩 Dumping $file... ($files_deleted files dumped)"
-                curl -s -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key" > /dev/null
-            fi
-        done < "$tmp_file"
-    }
-    
-    # Process initial batch
-    process_files "$response"
-    
-    # Handle pagination
-    local next_page_token=$(echo "$response" | grep -o '"nextPageToken": *"[^"]*"' | cut -d'"' -f4)
-    
-    while [ ! -z "$next_page_token" ]; do
-        response=$(curl -s "https://generativelanguage.googleapis.com/v1beta/files?key=$api_key&pageToken=$next_page_token")
-        process_files "$response"
-        next_page_token=$(echo "$response" | grep -o '"nextPageToken": *"[^"]*"' | cut -d'"' -f4)
-    done
-    
-    rm -f "$tmp_file"
-    echo "✨💨 Successfully deleted $files_deleted files you never knew you had in $project_name"
-}
 
 # Process all configured projects
 while IFS=: read -r project_name api_key; do
@@ -195,99 +328,3 @@ done < "$CONFIG_FILE"
 
 echo ""
 echo "💩🎉 Dump complete. Gemini API's 20GB limit is now someone else's problem. Ahh, that feels better." 
-
-setup_cron() {
-    echo "🕒 Let's schedule regular dumps to keep Gemini API from getting constipated"
-    echo ""
-    echo "How often should gdump run?"
-    echo "  1. Hourly (for the paranoid)"
-    echo "  2. Daily"
-    echo "  3. Weekly"
-    echo "  4. Monthly"
-    echo "  5. Custom schedule"
-    echo "  6. Nevermind, I'll run it manually"
-    echo ""
-    read -p "Enter your choice (1-6): " choice
-
-    case $choice in
-        1)  # Hourly
-            schedule="0 * * * *"  # Every hour on the hour
-            description="every hour"
-            ;;
-        2)  # Daily
-            schedule="0 0 * * *"  # Midnight every day
-            description="daily at midnight"
-            ;;
-        3)  # Weekly
-            schedule="0 0 * * 0"  # Midnight every Sunday
-            description="weekly on Sunday at midnight"
-            ;;
-        4)  # Monthly
-            schedule="0 0 1 * *"  # Midnight on the 1st of each month
-            description="monthly on the 1st at midnight"
-            ;;
-        5)  # Custom
-            echo "Enter your cron schedule (e.g., '0 0 * * *' for daily at midnight):"
-            read -p "Schedule: " schedule
-            description="on your custom schedule"
-            ;;
-        6)  # Exit
-            echo "👋 No problem! Just run gdump manually when needed"
-            return
-            ;;
-        *)  
-            echo "🤨 That wasn't one of the options. Try again with --schedule"
-            return
-            ;;
-    esac
-
-    # Create or update cron job
-    (crontab -l 2>/dev/null | grep -v "gdump") | crontab -
-    (crontab -l 2>/dev/null; echo "$schedule /usr/local/bin/gdump > $HOME/.gdump/gdump.log 2>&1") | crontab -
-
-    echo ""
-    echo "✅ Gdump will now run $description"
-    echo "💡 Logs will be saved to: $HOME/.gdump/gdump.log"
-}
-
-# Add this to the argument handling at the top
-if [ "$1" == "--schedule" ]; then
-    setup_cron
-    exit 0
-fi
-
-# Add this function near setup_cron()
-remove_cron() {
-    if crontab -l 2>/dev/null | grep -q "gdump"; then
-        (crontab -l 2>/dev/null | grep -v "gdump") | crontab -
-        echo "✅ Automatic dumps removed. You'll need to run gdump manually now."
-    else
-        echo "😶 No scheduled dumps found."
-    fi
-}
-
-# Add to argument handling
-if [ "$1" == "--remove-schedule" ]; then
-    remove_cron
-    exit 0
-fi 
-
-# Add this function
-show_cron() {
-    if crontab -l 2>/dev/null | grep -q "gdump"; then
-        echo "🕒 Current gdump schedule:"
-        crontab -l | grep "gdump"
-        echo ""
-        echo "💡 To change this, run: gdump --schedule"
-        echo "   To remove it, run: gdump --remove-schedule"
-    else
-        echo "😶 No scheduled dumps found."
-        echo "💡 To set one up, run: gdump --schedule"
-    fi
-}
-
-# Add to argument handling
-if [ "$1" == "--show-schedule" ]; then
-    show_cron
-    exit 0
-fi 

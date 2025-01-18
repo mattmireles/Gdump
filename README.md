@@ -60,6 +60,12 @@ gdump --show-schedule
 
 # Stop automatic dumps
 gdump --remove-schedule
+
+# Show all commands
+gdump --help
+
+# Check version
+gdump --version
 ```
 
 ## Contributing
