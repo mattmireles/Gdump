@@ -12,7 +12,7 @@ mkdir -p "$CONFIG_DIR"
 # Handle configuration
 if [ "$1" == "--configure" ]; then
     # Create or clear config file
-    echo "🔧 Let's configure your Google Cloud Projects for gdump"
+    echo "🔧 Let's configure gdump to work with your Google Cloud Project(s)"
     echo "# Format: project_name:api_key" > "$CONFIG_FILE"
     chmod 600 "$CONFIG_FILE"
     
