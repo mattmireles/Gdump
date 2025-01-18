@@ -2,7 +2,7 @@
 
 Are you having Gemini API problems? Of course you are. That's why you're here.
 
-You just realized that Gemini's been secretly storing your files. And it has a 20GB limit. Which it doesn't tell you about. Until your API calls mysteriously stop working and you spend six hours of your life that you'll never get back trying to figure out why.
+So Gemini's been secretly storing your files. And it has a 20GB limit. Which it doesn't tell you about. Until your API calls mysteriously stop working and you spend six hours of your life that you'll never get back trying to figure out why. You just realized this. 
 
 Don't worry. We've all been there. That's why Gdump exists.
 
