@@ -25,10 +25,14 @@ if ! curl -fsSL "$GITHUB_RAW_URL" -o "/tmp/$SCRIPT_NAME"; then
     exit 1
 fi
 
-# When downloading the script
-VERSION=$(curl -fsSL https://api.github.com/repos/mattmireles/gdump/releases/latest | grep '"tag_name":' | cut -d'"' -f4)
-sed "s/VERSION=.*/VERSION=\"$VERSION\"/" "/tmp/$SCRIPT_NAME" > "/tmp/$SCRIPT_NAME.tmp"
-mv "/tmp/$SCRIPT_NAME.tmp" "/tmp/$SCRIPT_NAME"
+# Get version, with fallback
+VERSION=$(curl -fsSL https://api.github.com/repos/mattmireles/gdump/releases/latest 2>/dev/null | grep '"tag_name":' | cut -d'"' -f4 || echo "dev")
+
+# Only try to update version if we got one
+if [ ! -z "$VERSION" ] && [ "$VERSION" != "dev" ]; then
+    sed "s/VERSION=.*/VERSION=\"$VERSION\"/" "/tmp/$SCRIPT_NAME" > "/tmp/$SCRIPT_NAME.tmp"
+    mv "/tmp/$SCRIPT_NAME.tmp" "/tmp/$SCRIPT_NAME"
+fi
 
 # Make the script executable and move it to destination
 chmod +x "/tmp/$SCRIPT_NAME"
