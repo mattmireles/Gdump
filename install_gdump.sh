@@ -41,8 +41,9 @@ echo "
 🚀 What's next:
 
     1. Open a new terminal window
-    2. Type:  gdump --configure
-    3. Have your API keys ready (yeah, you need those 🙄)
+    2. Type:  gdump --edit
+    3. Follow the prompts to add your Google Cloud Project(s)
+       (yeah, you'll need those API keys 🙄)
 
 💡 Need API keys? Check out: https://github.com/mattmireles/gdump#setup
    (Don't worry, we explain where to find them)

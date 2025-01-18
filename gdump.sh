@@ -126,7 +126,8 @@ fi
 
 # Check if config file exists and has entries
 if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
-    echo "No projects configured. Please run: gdump --configure"
+    echo "😶 No projects configured yet. Run: gdump --edit"
+    echo "   We'll help you set up your Google Cloud Project(s)"
     exit 1
 fi
 
@@ -146,7 +147,7 @@ cleanup_project() {
     if echo "$response" | grep -q "error"; then
         echo "❌ Hmm. Either that API key is wrong or Gemini is having a moment. Check $project_name and try again."
         return 1
-    }
+    fi
     
     # Extract and delete files
     local files_deleted=0
