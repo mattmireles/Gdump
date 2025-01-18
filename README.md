@@ -2,7 +2,7 @@
 
 Are you having Gemini API problems? Of course you are. That's why you're here.
 
-So Gemini's been secretly storing your files. And it has a 20GB limit. Which it doesn't tell you about. Until your API calls mysteriously stop working and you spend six hours of your life that you'll never get back trying to figure out why. You just realized this. 
+So Gemini's been secretly storing your files for 48 hours. And it has a 20GB limit. Which it doesn't tell you about. Until your API calls mysteriously stop working and you spend six hours of your life that you'll never get back trying to figure out why. You just realized this. 
 
 Don't worry. We've all been there. That's why Gdump exists.
 
@@ -39,11 +39,9 @@ gdump --schedule
 ```
 
 Choose from:
-- Hourly (for the paranoid)
-- Daily (most popular)
-- Weekly (Sunday at midnight)
-- Monthly (1st of the month)
-- Custom schedule (for cron wizards)
+- Hourly
+- Daily 
+- Custom schedule 
 
 Your dumps will run silently in the background, with logs saved to `~/.gdump/gdump.log`.
 
