@@ -36,13 +36,13 @@ sudo chown $(whoami):admin "$DESTINATION"
 sudo chmod 755 "$DESTINATION"
 
 echo "
-✅ gdump installed successfully! Time to fix your Gemini problems.
+✅ gdump installed successfully! Time to fix your Gemini API file storage limit problems.
 
 🚀 What's next:
 
     1. Open a new terminal window
     2. Type:  gdump --edit
-    3. Follow the prompts to add your Google Cloud Project(s)
+    3. Follow the prompts to add the Google Cloud Project(s) that you want to dump
        (yeah, you'll need those API keys 🙄)
 
 💡 Need API keys? Check out: https://github.com/mattmireles/gdump#setup
