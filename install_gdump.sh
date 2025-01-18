@@ -45,6 +45,9 @@ echo "
     3. Follow the prompts to add the Google Cloud Project(s) that you want to dump
        (yeah, you'll need those API keys 🙄)
 
+💡 Pro tip: Run 'gdump --schedule' to set up automatic dumps
+    (because who wants to think about this more than once?)
+
 💡 Need API keys? Check out: https://github.com/mattmireles/gdump#setup
    (Don't worry, we explain where to find them)
 "

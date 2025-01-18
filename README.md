@@ -22,17 +22,12 @@ That's it. That's the whole thing.
 curl -fsSL https://raw.githubusercontent.com/mattmireles/gdump/main/install_gdump.sh | bash
 ```
 
-The installer will walk you through a brief configuration where you'll enter your Google Cloud project(s) details. Yes, you need API keys. No, we can't avoid it. Here's where to find them:
+The installer will walk you through adding your Google Cloud Project(s). Yes, you need API keys. No, we can't avoid it. Here's where to find them:
 
 Get your API key(s) from either:
 
 - [Google AI Studio](https://makersuite.google.com/app/apikey) (easiest)
 - [Google Cloud Console](https://console.cloud.google.com) (if you need more control)
-
-Need to reconfigure later? Just run:
-```bash
-gdump --configure
-```
 
 ## Features
 
@@ -40,6 +35,32 @@ gdump --configure
 - Handles pagination (because of course you have more than 100 files)
 - Shows progress (so you know it's doing something)
 - Stores config securely (we're not animals)
+- Automatic dumps:
+  - `gdump --schedule` to set up hourly/daily/weekly dumps
+  - `gdump --show-schedule` to check when dumps happen
+  - `gdump --remove-schedule` to go back to manual mode
+- Project management:
+  - `gdump --edit` to add/remove/edit projects
+  - Fat-finger protection included
+
+## Common Commands
+
+```bash
+# Run a manual dump
+gdump
+
+# Add or edit your projects
+gdump --edit
+
+# Set up automatic dumps
+gdump --schedule
+
+# Check your current schedule
+gdump --show-schedule
+
+# Stop automatic dumps
+gdump --remove-schedule
+```
 
 ## Contributing
 
