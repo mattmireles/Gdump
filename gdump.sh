@@ -12,7 +12,7 @@ mkdir -p "$CONFIG_DIR"
 # Handle configuration
 if [ "$1" == "--configure" ]; then
     # Create or clear config file
-    echo "🔧 Let's configure gdump to work with your Google Cloud Project(s)"
+    echo "🔧 Time to tell gdump about your Google Cloud Project(s) and API key(s)."
     echo "# Format: project_name:api_key" > "$CONFIG_FILE"
     chmod 600 "$CONFIG_FILE"
     
@@ -32,7 +32,7 @@ if [ "$1" == "--configure" ]; then
     done
     
     echo ""
-    echo "✅ Configuration complete! You can now run 'gdump' to clean up files from all projects"
+    echo "✅ Done. Now you can run 'gdump' whenever Gemini API craps out due to file storage limits."
     echo "To reconfigure at any time, run: gdump --configure"
     exit 0
 fi
@@ -43,7 +43,7 @@ if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-echo "🧹 Starting Gemini API file cleanup..."
+echo "🧹 Finding all those files Gemini API didn't tell you about..."
 
 # Get the list of files and delete them for a single project
 cleanup_project() {
@@ -51,13 +51,13 @@ cleanup_project() {
     local api_key=$2
     
     echo ""
-    echo "📁 Processing project: $project_name"
+    echo "📁 Checking what Gemini's been storing in $project_name..."
     
     local response=$(curl -s "https://generativelanguage.googleapis.com/v1beta/files?key=$api_key")
     
     # Check for API errors
     if echo "$response" | grep -q "error"; then
-        echo "❌ Error: Invalid API key or API request failed for project $project_name"
+        echo "❌ Hmm. Either that API key is wrong or Gemini is having a moment. Check $project_name and try again."
         return 1
     }
     
@@ -65,9 +65,9 @@ cleanup_project() {
     local files_deleted=0
     echo "$response" | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 | while read -r file; do
         if [ ! -z "$file" ]; then
-            echo "🗑️  Deleting $file..."
-            curl -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key"
             ((files_deleted++))
+            echo "☁️💩 Dumping $file... ($files_deleted dumped)"
+            curl -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key"
         fi
     done
     
@@ -79,16 +79,16 @@ cleanup_project() {
         
         echo "$response" | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 | while read -r file; do
             if [ ! -z "$file" ]; then
-                echo "🗑️  Deleting $file..."
-                curl -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key"
                 ((files_deleted++))
+                echo "☁️💩 Dumping $file... ($files_deleted dumped)"
+                curl -X DELETE "https://generativelanguage.googleapis.com/v1beta/$file?key=$api_key"
             fi
         done
         
         next_page_token=$(echo "$response" | grep -o '"nextPageToken": *"[^"]*"' | cut -d'"' -f4)
     done
     
-    echo "✨ Cleaned up $files_deleted files from $project_name"
+    echo "✨💨 Successfully deleted $files_deleted files you never knew you had in $project_name"
 }
 
 # Process all configured projects
@@ -101,4 +101,4 @@ while IFS=: read -r project_name api_key; do
 done < "$CONFIG_FILE"
 
 echo ""
-echo "🎉 All projects processed!" 
+echo "💩🎉 Dump complete. Gemini API's 20GB limit is now someone else's problem." 
