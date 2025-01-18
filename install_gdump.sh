@@ -13,6 +13,15 @@ echo "Installing gdump..."
 if [ ! -d "/usr/local/bin" ]; then
     echo "Creating /usr/local/bin directory..."
     sudo mkdir -p /usr/local/bin
+    # Ensure proper ownership on macOS
+    sudo chown $(whoami):admin /usr/local/bin
+fi
+
+# Ensure /usr/local/bin is in PATH
+if [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then
+    echo "Adding /usr/local/bin to PATH..."
+    echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.zshrc
+    source ~/.zshrc
 fi
 
 # Download the gdump script
@@ -30,13 +39,16 @@ fi
 # Make the script executable
 chmod +x "/tmp/$SCRIPT_NAME"
 
-# Move the script to /usr/local/bin
+# Move the script to /usr/local/bin with proper permissions
 echo "Installing gdump to $DESTINATION..."
-if sudo mv "/tmp/$SCRIPT_NAME" "$DESTINATION"; then
+if sudo mv "/tmp/$SCRIPT_NAME" "$DESTINATION" && \
+   sudo chown $(whoami):admin "$DESTINATION" && \
+   sudo chmod 755 "$DESTINATION"; then
     echo "✅ gdump has been installed successfully!"
     echo ""
     echo "Let's configure your projects now!"
-    gdump --configure
+    # Use full path to ensure it's found
+    /usr/local/bin/gdump --configure
 else
     echo "Error: Failed to install gdump"
     rm -f "/tmp/$SCRIPT_NAME"
