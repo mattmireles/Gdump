@@ -24,7 +24,8 @@ Get your API key(s) from either:
 Gdump finds and deletes all those temporary files Gemini has been hoarding. One command, no fuss:
 
 ```bash
-gdump
+gdump              # Dump all projects
+gdump --project "My Project"  # Or just dump one
 ```
 
 Run it manually whenever you want, or set up automatic dumps to never think about it again.
@@ -59,6 +60,7 @@ gdump --remove-schedule
 ## Features
 
 - Cleans up files across multiple projects
+- Dump all projects or just one
 - Handles pagination (because of course you have more than 100 files)
 - Shows progress (so you know it's doing something)
 - Stores config securely (we're not animals)
@@ -89,6 +91,9 @@ gdump --help
 
 # Check version
 gdump --version
+
+# Dump a specific project
+gdump --project "My Project"
 ```
 
 ## Contributing

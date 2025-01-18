@@ -18,15 +18,18 @@ Usage: gdump [command]
 
 Commands:
     (no command)  Run a dump now
+    --project <name>  Dump a specific project
     --edit        Add, remove, or edit your GCP projects
     --schedule    Set up automatic dumps (hourly/daily/weekly)
     --show-schedule  Check when dumps are scheduled
     --remove-schedule  Stop automatic dumps
+    --version     Show version information
     --help        Show this help message
 
 Example:
-    gdump         # Dump those files now
-    gdump --edit  # Fix that project name you typoed
+    gdump              # Dump all projects
+    gdump --project \"My Project\"  # Dump just one project
+    gdump --edit       # Fix that project name you typoed
 
 Need more help? Visit: https://github.com/mattmireles/gdump#readme
 "
@@ -304,6 +307,47 @@ fi
 
 if [ "$1" == "--version" ]; then
     echo "gdump $(get_version)"
+    exit 0
+fi
+
+# Add to argument handling (before the main dump logic)
+if [ "$1" == "--project" ]; then
+    if [ -z "$2" ]; then
+        echo "❌ Project name required. Usage: gdump --project \"My Project\""
+        echo "💡 Not sure of your project names? Run: gdump --edit to see them"
+        exit 1
+    fi
+
+    # Check if config file exists and has entries
+    if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
+        echo "😶 No projects configured yet. Run: gdump --edit"
+        echo "   We'll help you set up your Google Cloud Project(s)"
+        exit 1
+    fi
+
+    echo "🧹 Finding files in project: $2"
+    
+    # Find and process the specific project
+    found=0
+    while IFS=: read -r project_name api_key; do
+        # Skip comments and empty lines
+        [[ $project_name =~ ^#.*$ ]] && continue
+        [[ -z $project_name ]] && continue
+        
+        if [ "$project_name" == "$2" ]; then
+            cleanup_project "$project_name" "$api_key"
+            found=1
+            break
+        fi
+    done < "$CONFIG_FILE"
+
+    if [ $found -eq 0 ]; then
+        echo "❌ Project \"$2\" not found. Run 'gdump --edit' to see your projects"
+        exit 1
+    fi
+
+    echo ""
+    echo "💩🎉 Dump complete for $2. Ahh, that feels better."
     exit 0
 fi
 
