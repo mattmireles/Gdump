@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Enable debug mode to see what's happening
+set -x
 set -e  # Exit on error
 
 # Define paths
@@ -24,16 +26,24 @@ if [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then
     source ~/.zshrc
 fi
 
-# Download the gdump script
+# Download the gdump script with better error handling
 echo "Downloading gdump..."
-if ! curl -fsSL "$GITHUB_RAW_URL" -o "/tmp/$SCRIPT_NAME"; then
+if ! curl -v -fsSL "$GITHUB_RAW_URL" -o "/tmp/$SCRIPT_NAME"; then
+    echo "Download from GitHub failed. Checking for local copy..."
     # Fallback to local copy if download fails
     if [ -f "$SCRIPT_NAME" ]; then
+        echo "Found local copy, using that instead..."
         cp "$SCRIPT_NAME" "/tmp/$SCRIPT_NAME"
     else
-        echo "Error: Failed to get gdump script"
+        echo "Error: Failed to get gdump script. Neither download nor local copy available."
         exit 1
     fi
+fi
+
+# Verify the downloaded file exists and has content
+if [ ! -s "/tmp/$SCRIPT_NAME" ]; then
+    echo "Error: Downloaded script is empty or missing"
+    exit 1
 fi
 
 # Make the script executable
@@ -47,8 +57,22 @@ if sudo mv "/tmp/$SCRIPT_NAME" "$DESTINATION" && \
     echo "✅ gdump has been installed successfully!"
     echo ""
     echo "Let's configure your projects now!"
-    # Use full path to ensure it's found
-    /usr/local/bin/gdump --configure
+    
+    # Test if gdump is executable and in PATH
+    if ! which gdump > /dev/null; then
+        echo "Error: gdump not found in PATH after installation"
+        echo "Current PATH: $PATH"
+        exit 1
+    fi
+    
+    # Execute configuration with full path and debug output
+    echo "Starting configuration..."
+    "$DESTINATION" --configure || {
+        echo "Error: Configuration failed"
+        echo "gdump executable contents:"
+        cat "$DESTINATION"
+        exit 1
+    }
 else
     echo "Error: Failed to install gdump"
     rm -f "/tmp/$SCRIPT_NAME"
